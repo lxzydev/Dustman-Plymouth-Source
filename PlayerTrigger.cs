@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using HutongGames.PlayMaker;
 using MSCLoader;
 using UnityEngine;
@@ -6,51 +8,74 @@ namespace DUSTMAN
 {
     public class PlayerTrigger : MonoBehaviour
 	{
-		public DUSTMAN tm;
+		private bool entered;
 		private bool inCar;
-		private bool wasSeated;
+		private bool wait;
+		private GameObject player;
+		public DUSTMAN tm;
 		private GameObject gears_obj;
 		private TextMesh gears;
+		private GameObject DUSTMANCAR;
+
 		private void Start()
 		{
-			this.gears_obj = GameObject.Find("GUI/Indicators").transform.FindChild("Gear").gameObject;
-			this.gears = this.gears_obj.GetComponent<TextMesh>();
+			try
+			{
+				this.gears_obj = GameObject.Find("GUI/Indicators").transform.FindChild("Gear").gameObject;
+				this.gears = this.gears_obj.GetComponent<TextMesh>();
+			}
+			catch (Exception e)
+			{
+				ModConsole.Error("[DUSTMAN] PlayerTrigger - GUI/Indicators/Gear not found: " + e.Message);
+			}
+			this.DUSTMANCAR = GameObject.Find("DUSTMAN(1408kg)");
 		}
 
 		private void Update()
 		{
-			bool isSeated = false;
-			GameObject cam = GameObject.Find("FPSCamera");
-			if (cam != null)
+			if (this.entered && this.player != null && !this.wait)
 			{
-				isSeated = cam.transform.root.name == "DUSTMAN(1408kg)";
-			}
-
-			if (isSeated && !this.wasSeated)
-			{
-				this.inCar = true;
-				this.tm.SteeringEnabler(true);
-				this.gears_obj.SetActive(true);
-				this.gears_obj.GetComponent<PlayMakerFSM>().enabled = false;
-				Rigidbody cloneRB = this.tm.bachClone.GetComponent<Rigidbody>();
-				if (cloneRB != null)
-					GameObject.Destroy(cloneRB);
-			}
-
-			if (!isSeated && this.wasSeated)
-			{
-				this.inCar = false;
-				this.tm.SteeringEnabler(false);
-				this.gears_obj.SetActive(false);
-				this.gears_obj.GetComponent<PlayMakerFSM>().enabled = true;
-				if (this.tm.bachClone.GetComponent<Rigidbody>() == null)
+				PlayMakerGlobals.Instance.Variables.FindFsmBool("GUIdrive").Value = true;
+				PlayMakerGlobals.Instance.Variables.FindFsmString("GUIinteraction").Value = "Enter Driving Mode";
+				if (Input.GetKeyDown(KeyCode.Return))
 				{
-					Rigidbody rb = this.tm.bachClone.AddComponent<Rigidbody>();
-					rb.isKinematic = true;
+					this.wait = true;
+					base.StartCoroutine(this.WaitForASec());
+					PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated").Value = true;
+					PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerCarControl").Value = true;
+					this.entered = false;
+					this.player.GetComponent<CharacterController>().enabled = false;
+					PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerStop").Value = true;
+					this.player.transform.SetParent(base.transform);
+					this.tm.SteeringEnabler(true);
+					this.inCar = true;
+					PlayMakerGlobals.Instance.Variables.FindFsmBool("GUIdrive").Value = false;
+					PlayMakerGlobals.Instance.Variables.FindFsmString("GUIinteraction").Value = string.Empty;
+					this.gears_obj.SetActive(true);
+					this.gears_obj.GetComponent<PlayMakerFSM>().enabled = false;
 				}
 			}
-
-			this.wasSeated = isSeated;
+			if (this.inCar && !this.wait)
+			{
+				if (this.DUSTMANCAR.GetComponent<CarDynamics>().velo < 0.3f)
+				{
+					if (Input.GetKeyDown(KeyCode.Return))
+					{
+						this.wait = true;
+						base.StartCoroutine(this.WaitForASec());
+						PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated").Value = false;
+						PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerCarControl").Value = false;
+						this.player.transform.SetParent(null);
+						this.player.GetComponent<CharacterController>().enabled = true;
+						PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerStop").Value = false;
+						this.tm.SteeringEnabler(false);
+						this.inCar = false;
+						this.gears_obj.SetActive(false);
+						this.gears_obj.GetComponent<PlayMakerFSM>().enabled = true;
+						this.player.transform.eulerAngles = new Vector3(0f, this.player.transform.eulerAngles.y, 0f);
+					}
+				}
+			}
 		}
 
 		private void GearsText(string text)
@@ -59,10 +84,11 @@ namespace DUSTMAN
 			this.gears_obj.transform.GetChild(0).GetComponent<TextMesh>().text = text;
 		}
 
-		private void LateUpdate()
+		private IEnumerator WaitForASec()
 		{
-			if (this.inCar)
-				this.tm.cameraPivot.localPosition = this.tm.cameraPivotInitPos;
+			yield return new WaitForSeconds(2f);
+			this.wait = false;
+			yield break;
 		}
 
 		private void FixedUpdate()
@@ -73,14 +99,41 @@ namespace DUSTMAN
 				{
 					this.GearsText("R");
 				}
-				else if (this.tm.drivetrain.gear == this.tm.drivetrain.neutral)
-				{
-					this.GearsText("N");
-				}
 				else
 				{
-					this.GearsText((this.tm.drivetrain.gear - this.tm.drivetrain.neutral).ToString());
+					if (this.tm.drivetrain.gear == this.tm.drivetrain.neutral)
+					{
+						this.GearsText("N");
+					}
+					else
+					{
+						this.GearsText((this.tm.drivetrain.gear - this.tm.drivetrain.neutral).ToString());
+					}
 				}
+			}
+		}
+
+		private void OnTriggerEnter(Collider other)
+		{
+			if (other.name == "PLAYER" && !this.inCar)
+			{
+				this.player = other.gameObject;
+				this.entered = true;
+				PlayMakerGlobals.Instance.Variables.FindFsmBool("GUIdrive").Value = true;
+				PlayMakerGlobals.Instance.Variables.FindFsmString("GUIinteraction").Value = "Enter Driving Mode";
+				PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated").Value = true;
+			}
+		}
+
+		private void OnTriggerExit()
+		{
+			if (!this.inCar)
+			{
+				this.entered = false;
+				PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated").Value = false;
+				this.player = null;
+				PlayMakerGlobals.Instance.Variables.FindFsmBool("GUIdrive").Value = false;
+				PlayMakerGlobals.Instance.Variables.FindFsmString("GUIinteraction").Value = string.Empty;
 			}
 		}
 	}

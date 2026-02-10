@@ -28,8 +28,8 @@ namespace DUSTMAN
 			this.starter = base.transform.GetChild(16).GetComponent<AudioSource>();
 			this.starter.volume = 0.5f;
 			this.SHUTOFF = GameObject.Find("DUSTMAN(1408kg)/SOUNDS/Engine_ShutOff");
-			this.INCAR = GameObject.Find("DUSTMAN(1408kg)");
-			this.CHILD = GameObject.Find("FPSCamera");
+			this.INCAR = GameObject.Find("DUSTMAN(1408kg)/PlayerTrigger");
+			this.CHILD = GameObject.Find("PLAYER");
 			this.lightsCollider = base.transform.GetChild(14).GetComponent<Collider>();
 			this.ignitionCollider = base.transform.GetChild(15).GetComponent<Collider>();
 		}

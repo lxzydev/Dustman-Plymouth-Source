@@ -1,5 +1,4 @@
 using HutongGames.PlayMaker;
-using HutongGames.PlayMaker.Actions;
 using MSCLoader;
 using System;
 using UnityEngine;
@@ -10,7 +9,7 @@ namespace DUSTMAN
     {
         public override string ID => "Plymouth";
         public override string Name => "Plymouth";
-        public override string Author => "Flat0ut, ported by lxzy";
+        public override string Author => "Flat0ut Reincarnated";
         public override string Version => "1.0";
         public override Game SupportedGames => Game.MyWinterCar;
 
@@ -24,6 +23,7 @@ namespace DUSTMAN
 		private GameObject Exhaust;
 		private GameObject TRUNKTRIGGER;
 		private GameObject TRUNK;
+		private GameObject PLAYER;
 		private GameObject DOORCLOSEL;
 		private GameObject DOORCLOSER;
 		private GameObject DOOROPENL;
@@ -85,7 +85,8 @@ namespace DUSTMAN
 		private float RLELEVATION;
 		private float FINALPOSITIONRL;
 		private float FINALPOSITIONRR;
-		public GameObject CAR;
+		public float DISTANCE;
+		private GameObject CAR;
 		private GameObject BUYING;
 		private GameObject BUYING2;
 		private GameObject SIGN;
@@ -96,8 +97,6 @@ namespace DUSTMAN
 		public bool bought;
 		public Drivetrain drivetrain;
 		private AxisCarController acc;
-		public Transform cameraPivot;
-		public Vector3 cameraPivotInitPos;
 		private Collider doorTriggerRCollider;
 		private Collider doorTriggerLCollider;
 		private Collider trunkTriggerCollider;
@@ -105,6 +104,8 @@ namespace DUSTMAN
 		private Collider buyTriggerCollider;
 		private Collider buyTrigger2Collider;
 		private Collider buyTrigger3Collider;
+
+		private bool loggedPlayMakerCheck;
 
 		private static readonly Vector3 SPAWN_POS = new Vector3(1546.388f, 5.24076f, 734.0383f);
 		private static readonly Vector3 SPAWN_ROT = new Vector3(7.431609f, 164.599f, 0.6475128f);
@@ -151,44 +152,43 @@ namespace DUSTMAN
 			this.SIGN.transform.position = new Vector3(1554f, 6.5f, 741.6f);
 			this.acc = this.CAR.GetComponent<AxisCarController>();
 			this.drivetrain = this.CAR.GetComponent<Drivetrain>();
-			Axles axles = this.CAR.GetComponent<Axles>();
-			axles.frontAxle.leftWheel.forwardGripFactor = 2.0f;
-			axles.frontAxle.leftWheel.sidewaysGripFactor = 2.0f;
-			axles.frontAxle.rightWheel.forwardGripFactor = 2.0f;
-			axles.frontAxle.rightWheel.sidewaysGripFactor = 2.0f;
-			axles.rearAxle.leftWheel.forwardGripFactor = 2.0f;
-			axles.rearAxle.leftWheel.sidewaysGripFactor = 2.0f;
-			axles.rearAxle.rightWheel.forwardGripFactor = 2.0f;
-			axles.rearAxle.rightWheel.sidewaysGripFactor = 2.0f;
 			this.SteeringEnabler(false);
-			this.CloneBachglotzDriverSystem();
-			GameObject.Find("DUSTMAN(1408kg)/collisionsworld/coll").layer = 17;
-			GameObject.Find("DUSTMAN(1408kg)").layer = 18;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/seatcoll").layer = 9;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/seatcolltop").layer = 9;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/groundcollider").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/bonnetcollider").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/DASHBOARDCOLL").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/DASHBOARDCOLL 1").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/maskcollider").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/windshieldcollider").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/rearwindowcollider").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/underwindshield").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/bodysideR").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/bodysideL").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/REARSEAT_lower").layer = 9;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/REARSEAT_upper").layer = 9;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/Front_int_right").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/Front_int_left").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/roofside_l").layer = 9;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/roofside_r").layer = 9;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/roofcollider").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcolground").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcollr").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcolll").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcollback").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcollfront").layer = 22;
-			GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcollfront2").layer = 22;
+			this.CAR.transform.FindChild("PlayerTrigger").gameObject.AddComponent<PlayerTrigger>().tm = this;
+			try
+			{
+				GameObject.Find("DUSTMAN(1408kg)/collisionsworld/coll").layer = 17;
+				GameObject.Find("DUSTMAN(1408kg)").layer = 18;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/seatcoll").layer = 9;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/seatcolltop").layer = 9;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/groundcollider").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/bonnetcollider").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/DASHBOARDCOLL").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/DASHBOARDCOLL 1").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/maskcollider").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/windshieldcollider").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/rearwindowcollider").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/underwindshield").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/bodysideR").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/bodysideL").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/REARSEAT_lower").layer = 9;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/REARSEAT_upper").layer = 9;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/Front_int_right").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/Front_int_left").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/roofside_l").layer = 9;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/roofside_r").layer = 9;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/roofcollider").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcolground").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcollr").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcolll").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcollback").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcollfront").layer = 22;
+				GameObject.Find("DUSTMAN(1408kg)/collisionsplayer/trunkcollfront2").layer = 22;
+			}
+			catch (Exception e)
+			{
+				ModConsole.Error("[DUSTMAN] Layer setup failed: " + e.Message);
+			}
+			this.PLAYER = GameObject.Find("PLAYER");
 			this.positionRR = GameObject.Find("DUSTMAN(1408kg)/Wheels/WheelRR/TireRR");
 			this.positionRL = GameObject.Find("DUSTMAN(1408kg)/Wheels/WheelRL/TireRL");
 			this.NEEDLE = GameObject.Find("DUSTMAN(1408kg)/speedometer");
@@ -237,32 +237,52 @@ namespace DUSTMAN
 			this.CAR.AddComponent<Deformable>().meshFilter = this.CAR.transform.GetChild(3).GetChild(49).GetComponent<MeshFilter>();
 			this.CAR.AddComponent<Deformable>().meshFilter = this.CAR.transform.FindChild("DriverDoors").FindChild("DOOR_RIGHT").GetChild(2).FindChild("door_right").GetComponent<MeshFilter>();
 			this.CAR.AddComponent<Deformable>().meshFilter = this.CAR.transform.FindChild("DriverDoors").FindChild("DOOR_LEFT").GetChild(2).FindChild("door_left").GetComponent<MeshFilter>();
-			Deformable[] defs = GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>();
-			defs[0].MaxVertexMov = 0.06f;
-			defs[0].Hardness = 1f;
-			defs[1].MaxVertexMov = 0.1f;
-			defs[1].Hardness = 1.5f;
-			defs[2].MaxVertexMov = 0.12f;
-			defs[2].Hardness = 1.5f;
-			defs[3].MaxVertexMov = 0.03f;
-			defs[5].MaxVertexMov = 0.04f;
-			defs[5].Hardness = 0.5f;
-			defs[6].MaxVertexMov = 0.03f;
-			defs[6].Hardness = 0.89f;
-			defs[9].MaxVertexMov = 0.02f;
-			defs[9].Hardness = 0.89f;
-			defs[10].MaxVertexMov = 0.02f;
-			defs[10].Hardness = 0.89f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[0].MaxVertexMov = 0.06f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[0].Hardness = 1f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[1].MaxVertexMov = 0.1f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[1].Hardness = 1.5f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[2].MaxVertexMov = 0.12f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[2].Hardness = 1.5f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[3].MaxVertexMov = 0.03f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[5].MaxVertexMov = 0.04f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[5].Hardness = 0.5f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[6].MaxVertexMov = 0.03f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[6].Hardness = 0.89f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[9].MaxVertexMov = 0.02f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[9].Hardness = 0.89f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[10].MaxVertexMov = 0.02f;
+			GameObject.Find("DUSTMAN(1408kg)").GetComponents<Deformable>()[10].Hardness = 0.89f;
 			this.CAR.transform.FindChild("collisionsplayer").gameObject.AddComponent<CarDashBoard>().drivetrain = this.drivetrain;
-			this.CAR.GetComponent<CarDynamics>().physicMaterials = GameObject.Find("BACHGLOTZ(1905kg)").GetComponent<CarDynamics>().physicMaterials;
-			GameObject radioPivot = GameObject.Instantiate<GameObject>(GameObject.Find("BACHGLOTZ(1905kg)/RadioPivot"));
-			radioPivot.transform.SetParent(GameObject.Find("DUSTMAN(1408kg)").transform);
-			radioPivot.transform.localPosition = new Vector3(0f, 0.26f, 0.78f);
-			radioPivot.transform.localRotation = Quaternion.Euler(310f, 5.008889E-06f, 180f);
-			GameObject repairShop = GameObject.Find("REPAIRSHOP");
-			repairShop.transform.Find("LOD").gameObject.SetActive(true);
-			GameObject.Find("REPAIRSHOP/LOD/Garbage/Flatbed").SetActive(false);
-			GameObject.Find("REPAIRSHOP/LOD/Garbage/bus_stop").SetActive(false);
+			try
+			{
+				this.CAR.GetComponent<CarDynamics>().physicMaterials = GameObject.Find("BACHGLOTZ(1905kg)").GetComponent<CarDynamics>().physicMaterials;
+			}
+			catch (Exception e)
+			{
+				ModConsole.Error("[DUSTMAN] Failed to copy physicMaterials from BACHGLOTZ: " + e.Message);
+			}
+			try
+			{
+				GameObject radioPivot = GameObject.Instantiate<GameObject>(GameObject.Find("BACHGLOTZ(1905kg)/RadioPivot"));
+				radioPivot.transform.SetParent(GameObject.Find("DUSTMAN(1408kg)").transform);
+				radioPivot.transform.localPosition = new Vector3(0f, 0.26f, 0.78f);
+				radioPivot.transform.localRotation = Quaternion.Euler(310f, 5.008889E-06f, 180f);
+			}
+			catch (Exception e)
+			{
+				ModConsole.Error("[DUSTMAN] Failed to clone RadioPivot from BACHGLOTZ: " + e.Message);
+			}
+			try
+			{
+				GameObject repairShop = GameObject.Find("REPAIRSHOP");
+				repairShop.transform.Find("LOD").gameObject.SetActive(true);
+				GameObject.Find("REPAIRSHOP/LOD/Garbage/Flatbed").SetActive(false);
+				GameObject.Find("REPAIRSHOP/LOD/Garbage/bus_stop").SetActive(false);
+			}
+			catch (Exception e)
+			{
+				ModConsole.Error("[DUSTMAN] REPAIRSHOP setup failed: " + e.Message);
+			}
 			this.LODACTIVATOR = GameObject.Find("MAP/StreetLights/4/LOD");
 			this.interiorlight = GameObject.Find("DUSTMAN(1408kg)/Interiorlight/interiorlight");
 			this.interiorlight.SetActive(false);
@@ -295,28 +315,14 @@ namespace DUSTMAN
 			this.buyTrigger2Collider = this.BUYTRIGGER2.GetComponent<Collider>();
 			this.BUYTRIGGER3 = this.PURHCASERIMS.transform.GetChild(1).gameObject;
 			this.buyTrigger3Collider = this.BUYTRIGGER3.GetComponent<Collider>();
-			try
+			Dustmansave dustmansave = SaveLoad.DeserializeSaveFile<Dustmansave>(this, "trophy.save");
+			if (dustmansave != null)
 			{
-				this.bought = SaveLoad.ReadValue<bool>(this, "bought");
-				this.newrims = SaveLoad.ReadValue<bool>(this, "newrims");
-				this.GTCAR = SaveLoad.ReadValue<bool>(this, "GTCAR");
-				float posX = SaveLoad.ReadValue<float>(this, "posX");
-				float posY = SaveLoad.ReadValue<float>(this, "posY");
-				float posZ = SaveLoad.ReadValue<float>(this, "posZ");
-				float rotX = SaveLoad.ReadValue<float>(this, "rotX");
-				float rotY = SaveLoad.ReadValue<float>(this, "rotY");
-				float rotZ = SaveLoad.ReadValue<float>(this, "rotZ");
-				if (posX != 0f || posY != 0f || posZ != 0f)
-				{
-					this.CAR.transform.position = new Vector3(posX, posY, posZ);
-					this.CAR.transform.rotation = Quaternion.Euler(rotX, rotY, rotZ);
-				}
-			}
-			catch
-			{
-				this.bought = false;
-				this.newrims = false;
-				this.GTCAR = false;
+				this.CAR.transform.position = dustmansave.pos;
+				this.CAR.transform.rotation = Quaternion.Euler(dustmansave.rotX, dustmansave.rotY, dustmansave.rotZ);
+				this.bought = dustmansave.bought;
+				this.newrims = dustmansave.newrims;
+				this.GTCAR = dustmansave.GTCAR;
 			}
 			this.CAR.GetComponent<Rigidbody>().isKinematic = false;
 			this.in_game = true;
@@ -346,107 +352,46 @@ namespace DUSTMAN
 			}
 		}
 
-		public GameObject bachClone;
-
-		private void CloneBachglotzDriverSystem()
-		{
-			GameObject bachglotz = GameObject.Find("BACHGLOTZ(1905kg)");
-
-			this.bachClone = GameObject.Instantiate(bachglotz);
-			this.bachClone.name = "DUSTMAN_BACH";
-			this.bachClone.transform.SetParent(this.CAR.transform);
-			this.bachClone.transform.localPosition = Vector3.zero;
-			this.bachClone.transform.localRotation = Quaternion.identity;
-
-			// kill driving components
-			AxisCarController cloneAcc = this.bachClone.GetComponent<AxisCarController>();
-			cloneAcc.throttleAxis = null;
-			cloneAcc.brakeAxis = null;
-			cloneAcc.steerAxis = null;
-			cloneAcc.handbrakeAxis = null;
-			cloneAcc.clutchAxis = null;
-			cloneAcc.shiftUpButton = null;
-			cloneAcc.shiftDownButton = null;
-			GameObject.Destroy(cloneAcc);
-			GameObject.Destroy(this.bachClone.GetComponent<CarController>());
-			GameObject.Destroy(this.bachClone.GetComponent<Drivetrain>());
-			GameObject.Destroy(this.bachClone.GetComponent<Axles>());
-
-			Rigidbody cloneRB = this.bachClone.GetComponent<Rigidbody>();
-			cloneRB.isKinematic = true;
-			cloneRB.interpolation = RigidbodyInterpolation.None;
-
-			foreach (Renderer r in this.bachClone.GetComponentsInChildren<Renderer>(true))
-				r.enabled = false;
-
-			foreach (Collider c in this.bachClone.GetComponentsInChildren<Collider>(true))
-			{
-				if (c.isTrigger && (c.transform.name == "PlayerTrigger" || c.transform.name == "DriveTriggerX"))
-					continue;
-				c.enabled = false;
-			}
-
-			// wipe save/load states so it doesnt mess with BACHGLOTZ saves
-			foreach (PlayMakerFSM fsm in this.bachClone.GetComponentsInChildren<PlayMakerFSM>(true))
-			{
-				foreach (FsmState state in fsm.FsmStates)
-				{
-					if (state.Name == "Load game" || state.Name == "Save game")
-						state.Actions = new FsmStateAction[0];
-				}
-			}
-
-			Transform driveTrigger = this.bachClone.transform.Find("LOD/PlayerTrigger/DriveTriggerX");
-			PlayMakerFSM dtFSM = driveTrigger.GetComponent<PlayMakerFSM>();
-			foreach (FsmState state in dtFSM.FsmStates)
-			{
-				if (state.Name == "Player in car")
-				{
-					foreach (FsmStateAction action in state.Actions)
-					{
-						if (action is SetStringValue ssv)
-							ssv.stringValue.Value = "DUSTMAN";
-						if (action is GetVelocity gv)
-							gv.Enabled = false;
-						if (action is GetSpeed gs)
-							gs.Enabled = false;
-						if (action is SetFsmFloat sff)
-							sff.Enabled = false;
-						if (action is FloatOperator fo)
-							fo.Enabled = false;
-					}
-				}
-				if (state.Name == "Check speed")
-					state.Actions = new FsmStateAction[0];
-			}
-
-			Transform dhp = this.bachClone.transform.Find("LOD/PlayerTrigger/DriveTriggerX/DriverHeadPivot");
-			this.cameraPivot = dhp;
-			this.cameraPivotInitPos = dhp.localPosition;
-			foreach (PlayMakerFSM hpFsm in dhp.GetComponents<PlayMakerFSM>())
-				hpFsm.enabled = false;
-
-			Transform clonedPT = this.bachClone.transform.Find("LOD/PlayerTrigger");
-			clonedPT.gameObject.AddComponent<PlayerTrigger>().tm = this;
-		}
-
 		private void Mod_OnSave()
 		{
-			SaveLoad.WriteValue(this, "bought", this.bought);
-			SaveLoad.WriteValue(this, "newrims", this.newrims);
-			SaveLoad.WriteValue(this, "GTCAR", this.GTCAR);
-			SaveLoad.WriteValue(this, "posX", this.CAR.transform.position.x);
-			SaveLoad.WriteValue(this, "posY", this.CAR.transform.position.y);
-			SaveLoad.WriteValue(this, "posZ", this.CAR.transform.position.z);
-			SaveLoad.WriteValue(this, "rotX", this.CAR.transform.rotation.eulerAngles.x);
-			SaveLoad.WriteValue(this, "rotY", this.CAR.transform.rotation.eulerAngles.y);
-			SaveLoad.WriteValue(this, "rotZ", this.CAR.transform.rotation.eulerAngles.z);
+			SaveLoad.SerializeSaveFile<Dustmansave>(this, new Dustmansave
+			{
+				pos = this.CAR.transform.position,
+				rotX = this.CAR.transform.rotation.eulerAngles.x,
+				rotY = this.CAR.transform.rotation.eulerAngles.y,
+				rotZ = this.CAR.transform.rotation.eulerAngles.z,
+				bought = this.bought,
+				newrims = this.newrims,
+				GTCAR = this.GTCAR
+			}, "trophy.save");
 		}
 
         private void Mod_Update()
         {
 			if (!this.in_game)
 				return;
+
+			if (!this.loggedPlayMakerCheck)
+			{
+				this.loggedPlayMakerCheck = true;
+				try
+				{
+					var guiUse = PlayMakerGlobals.Instance.Variables.FindFsmBool("GUIuse");
+					var guiDrive = PlayMakerGlobals.Instance.Variables.FindFsmBool("GUIdrive");
+					var guiInteraction = PlayMakerGlobals.Instance.Variables.FindFsmString("GUIinteraction");
+					var playerSeated = PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated");
+					if (guiUse == null) ModConsole.Error("[DUSTMAN] PlayMaker global 'GUIuse' not found");
+					if (guiDrive == null) ModConsole.Error("[DUSTMAN] PlayMaker global 'GUIdrive' not found");
+					if (guiInteraction == null) ModConsole.Error("[DUSTMAN] PlayMaker global 'GUIinteraction' not found");
+					if (playerSeated == null) ModConsole.Error("[DUSTMAN] PlayMaker global 'PlayerSeated' not found");
+					if (guiUse != null && guiDrive != null && guiInteraction != null && playerSeated != null)
+						ModConsole.Log("[DUSTMAN] PlayMaker globals OK");
+				}
+				catch (Exception e)
+				{
+					ModConsole.Error("[DUSTMAN] PlayMaker globals check failed: " + e.Message);
+				}
+			}
 
 			if (this.bought)
 			{
@@ -912,6 +857,18 @@ namespace DUSTMAN
 			this.WHEELRL.transform.localRotation = Quaternion.Euler(0f, 0f, this.FINALPOSITIONRL);
 			this.WHEELRR.transform.localRotation = Quaternion.Euler(0f, 0f, -this.FINALPOSITIONRR);
 			this.LODACTIVATOR.SetActive(true);
+			this.DISTANCE = Vector3.Distance(this.CAR.transform.position, this.PLAYER.transform.position);
+			if (this.DISTANCE < 0.8f)
+			{
+				PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated").Value = true;
+			}
+			if (this.DISTANCE > 0.8f)
+			{
+				if (this.DISTANCE < 1.2f)
+				{
+					PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated").Value = false;
+				}
+			}
         }
     }
 }
