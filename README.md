@@ -4,17 +4,14 @@ Adds a 1970 Plymouth to My Winter Car. Buy it at the repair shop, drive it aroun
 
 ## Features
 
-- Buyable at the repair shop for 56,900 MK
+- Buyable at the repair shop for 56,900 MK. GT rims (7,600 MK)
 - GT upgrade package (38,600 MK) - swaps the body panels and bumps the engine to 288hp
-- GT rims (7,600 MK)
 - Working doors, trunk, handbrake, lights, ignition, gear shifter
 - Dashboard with speedo and tachometer
-- Deformable body panels
-- Suspension impact sounds
 - Radio
-
+  
 ## Bugs
-Camera issue when driving. - note i will not fix this. 
+Camera issue when driving. - note i will NOT fix this. 
 
 ## Installation
 
