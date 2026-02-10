@@ -30,9 +30,6 @@ Open `Plymouth.sln` in Visual Studio. You'll need references to the game assembl
 
 I do not own the original mod. This is based on "Dustman," a mod originally uploaded to Nexus Mods around 2018–2019. The original author has since been banned from Nexus Mods. I have fixed and ported the mod to My Winter Car, but I take no credit for the original work. If the original mod author contacts me and wants it removed, I will take this down.
 
-Regarding the `Dustman.dll` virus accusations — **this is not a virus.** Do your own research before making claims. The DLL is a standard MSCLoader mod assembly. You are welcome to inspect the source code in this repository yourself.
-
-
 ## Screenshots
 
 ![screenshot here](https://i.imgur.com/3nlEnqp.jpeg)
