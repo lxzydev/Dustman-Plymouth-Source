@@ -13,6 +13,9 @@ Adds a 1970 Plymouth to My Winter Car. Buy it at the repair shop, drive it aroun
 - Suspension impact sounds
 - Radio
 
+## Bugs
+Camera issue when driving. - note i will not fix this. 
+
 ## Installation
 
 1. Install MSCLoader if you haven't already
