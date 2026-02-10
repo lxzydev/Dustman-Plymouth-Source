@@ -2,7 +2,9 @@
 
 Adds a 1970 Plymouth to My Winter Car. Buy it at the repair shop, drive it around, upgrade it.
 
-![screenshot here](screenshots/placeholder.png)
+![screenshot here](https://imgur.com/e70f1f14-79e2-4b62-9f8f-cc41dddc9f70)
+![screenshot here](https://imgur.com/505c969c-c235-4cca-96ce-b2ff10e656d5)
+![screenshot here](https://imgur.com/5e163b9c-41b8-4054-a285-0822988b8dd4)
 
 ## Features
 
@@ -17,7 +19,7 @@ Adds a 1970 Plymouth to My Winter Car. Buy it at the repair shop, drive it aroun
 
 ## Installation
 
-1. Install [MSCLoader](https://www.nexusmods.com/mywintercar/mods/2) if you haven't already
+1. Install MSCLoader if you haven't already
 2. Drop the mod DLL and asset bundles into your `Mods` folder
 3. Launch the game
 
@@ -25,6 +27,3 @@ Adds a 1970 Plymouth to My Winter Car. Buy it at the repair shop, drive it aroun
 
 Open `Plymouth.sln` in Visual Studio. You'll need references to the game assemblies and MSCLoader - check the `.csproj` for paths.
 
-## Screenshots
-
-(coming soon)
