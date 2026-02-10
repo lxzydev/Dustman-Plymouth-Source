@@ -2,9 +2,9 @@
 
 Adds a 1970 Plymouth to My Winter Car. Buy it at the repair shop, drive it around, upgrade it.
 
-![screenshot here](https://imgur.com/e70f1f14-79e2-4b62-9f8f-cc41dddc9f70)
-![screenshot here](https://imgur.com/505c969c-c235-4cca-96ce-b2ff10e656d5)
-![screenshot here](https://imgur.com/5e163b9c-41b8-4054-a285-0822988b8dd4)
+![screenshot here](https://i.imgur.com/3nlEnqp.jpeg)
+![screenshot here](https://i.imgur.com/DGZo7Eh.jpeg)
+![screenshot here](https://i.imgur.com/Z2felUG.jpeg)
 
 ## Features
 
