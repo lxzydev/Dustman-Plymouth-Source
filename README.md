@@ -2,10 +2,6 @@
 
 Adds a 1970 Plymouth to My Winter Car. Buy it at the repair shop, drive it around, upgrade it.
 
-![screenshot here](https://i.imgur.com/3nlEnqp.jpeg)
-![screenshot here](https://i.imgur.com/DGZo7Eh.jpeg)
-![screenshot here](https://i.imgur.com/Z2felUG.jpeg)
-
 ## Features
 
 - Buyable at the repair shop for 56,900 MK
@@ -27,3 +23,8 @@ Adds a 1970 Plymouth to My Winter Car. Buy it at the repair shop, drive it aroun
 
 Open `Plymouth.sln` in Visual Studio. You'll need references to the game assemblies and MSCLoader - check the `.csproj` for paths.
 
+## Screenshots
+
+![screenshot here](https://i.imgur.com/3nlEnqp.jpeg)
+![screenshot here](https://i.imgur.com/DGZo7Eh.jpeg)
+![screenshot here](https://i.imgur.com/Z2felUG.jpeg)
