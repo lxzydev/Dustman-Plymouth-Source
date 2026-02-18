@@ -1,6 +1,8 @@
 using HutongGames.PlayMaker;
+using HutongGames.PlayMaker.Actions;
 using MSCLoader;
 using System;
+using System.Reflection;
 using UnityEngine;
 
 namespace DUSTMAN
@@ -23,7 +25,6 @@ namespace DUSTMAN
 		private GameObject Exhaust;
 		private GameObject TRUNKTRIGGER;
 		private GameObject TRUNK;
-		private GameObject PLAYER;
 		private GameObject DOORCLOSEL;
 		private GameObject DOORCLOSER;
 		private GameObject DOOROPENL;
@@ -85,8 +86,7 @@ namespace DUSTMAN
 		private float RLELEVATION;
 		private float FINALPOSITIONRL;
 		private float FINALPOSITIONRR;
-		public float DISTANCE;
-		private GameObject CAR;
+private GameObject CAR;
 		private GameObject BUYING;
 		private GameObject BUYING2;
 		private GameObject SIGN;
@@ -105,7 +105,18 @@ namespace DUSTMAN
 		private Collider buyTrigger2Collider;
 		private Collider buyTrigger3Collider;
 
-		private bool loggedPlayMakerCheck;
+		private GameObject playerCheck;
+		private bool playerInCar;
+
+		// Traction settings sliders
+		private SettingsSlider settingFrontGrip;
+		private SettingsSlider settingRearGrip;
+
+		// Cached axle objects for grip reflection
+		private object axleFront;
+		private object axleRear;
+		private FieldInfo fieldForwardGrip;
+		private FieldInfo fieldSidewaysGrip;
 
 		private static readonly Vector3 SPAWN_POS = new Vector3(1546.388f, 5.24076f, 734.0383f);
 		private static readonly Vector3 SPAWN_ROT = new Vector3(7.431609f, 164.599f, 0.6475128f);
@@ -116,6 +127,16 @@ namespace DUSTMAN
 			SetupFunction(Setup.OnLoad, Mod_OnLoad);
 			SetupFunction(Setup.OnSave, Mod_OnSave);
 			SetupFunction(Setup.Update, Mod_Update);
+			SetupFunction(Setup.ModSettings, Mod_Settings);
+		}
+
+		private void Mod_Settings()
+		{
+			Settings.AddText("TRACTION");
+			this.settingFrontGrip = Settings.AddSlider("frontGrip", "Front Grip Factor", 0.1f, 5f, 1f);
+			Settings.AddText("Sideways grip mirrors this value");
+			this.settingRearGrip = Settings.AddSlider("rearGrip", "Rear Grip Factor", 0.1f, 5f, 1f);
+			Settings.AddText("Sideways grip mirrors this value");
 		}
 
 		private void Mod_OnMenuLoad()
@@ -153,7 +174,7 @@ namespace DUSTMAN
 			this.acc = this.CAR.GetComponent<AxisCarController>();
 			this.drivetrain = this.CAR.GetComponent<Drivetrain>();
 			this.SteeringEnabler(false);
-			this.CAR.transform.FindChild("PlayerTrigger").gameObject.AddComponent<PlayerTrigger>().tm = this;
+			this.playerCheck = this.SetupPlayer(this.CAR);
 			try
 			{
 				GameObject.Find("DUSTMAN(1408kg)/collisionsworld/coll").layer = 17;
@@ -188,7 +209,6 @@ namespace DUSTMAN
 			{
 				ModConsole.Error("[DUSTMAN] Layer setup failed: " + e.Message);
 			}
-			this.PLAYER = GameObject.Find("PLAYER");
 			this.positionRR = GameObject.Find("DUSTMAN(1408kg)/Wheels/WheelRR/TireRR");
 			this.positionRL = GameObject.Find("DUSTMAN(1408kg)/Wheels/WheelRL/TireRL");
 			this.NEEDLE = GameObject.Find("DUSTMAN(1408kg)/speedometer");
@@ -324,9 +344,242 @@ namespace DUSTMAN
 				this.newrims = dustmansave.newrims;
 				this.GTCAR = dustmansave.GTCAR;
 			}
+			this.CacheAxles();
 			this.CAR.GetComponent<Rigidbody>().isKinematic = false;
 			this.in_game = true;
         }
+
+		private void CacheAxles()
+		{
+			try
+			{
+				CarDynamics dynamics = this.CAR.GetComponent<CarDynamics>();
+				if (dynamics == null) { ModConsole.Error("[DUSTMAN] CarDynamics not found for axle caching"); return; }
+
+				var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+				var axlesField = dynamics.GetType().GetField("axles", flags);
+				if (axlesField == null) { ModConsole.Error("[DUSTMAN] CarDynamics.axles field not found"); return; }
+
+				object axles = axlesField.GetValue(dynamics);
+				if (axles == null) { ModConsole.Error("[DUSTMAN] axles value is null"); return; }
+
+				Type axlesType = axles.GetType();
+
+				// Try named fields first (front/rear)
+				foreach (string n in new[] { "front", "Front", "frontAxle" })
+				{
+					var f = axlesType.GetField(n, flags);
+					if (f != null) { this.axleFront = f.GetValue(axles); break; }
+				}
+				foreach (string n in new[] { "rear", "Rear", "rearAxle" })
+				{
+					var f = axlesType.GetField(n, flags);
+					if (f != null) { this.axleRear = f.GetValue(axles); break; }
+				}
+
+				// Fallback: try array access
+				if (this.axleFront == null || this.axleRear == null)
+				{
+					System.Array arr = axles as System.Array;
+					if (arr != null && arr.Length >= 2)
+					{
+						this.axleFront = arr.GetValue(0);
+						this.axleRear  = arr.GetValue(1);
+					}
+				}
+
+				if (this.axleFront == null || this.axleRear == null)
+				{
+					ModConsole.Error("[DUSTMAN] Could not resolve front/rear axles"); return;
+				}
+
+				// Cache the grip FieldInfos from the front axle type (same type for rear)
+				Type axleType = this.axleFront.GetType();
+				this.fieldForwardGrip  = axleType.GetField("forwardGripFactor",  flags);
+				this.fieldSidewaysGrip = axleType.GetField("sidewaysGripFactor", flags);
+
+				if (this.fieldForwardGrip == null || this.fieldSidewaysGrip == null)
+					ModConsole.Warning("[DUSTMAN] Grip factor fields not found on axle type — traction sliders will have no effect");
+				else
+					ModConsole.Log("[DUSTMAN] Axle traction cache OK");
+			}
+			catch (Exception e)
+			{
+				ModConsole.Error("[DUSTMAN] CacheAxles failed: " + e.Message);
+			}
+		}
+
+		private void ApplyTractionSettings()
+		{
+			if (this.fieldForwardGrip == null || this.fieldSidewaysGrip == null) return;
+			if (this.axleFront == null || this.axleRear == null) return;
+			if (this.settingFrontGrip == null || this.settingRearGrip == null) return;
+
+			float front = this.settingFrontGrip.GetValue();
+			float rear  = this.settingRearGrip.GetValue();
+
+			// Forward grip and sideways grip both set to the slider value
+			this.fieldForwardGrip.SetValue(this.axleFront,  front);
+			this.fieldSidewaysGrip.SetValue(this.axleFront, front);
+			this.fieldForwardGrip.SetValue(this.axleRear,   rear);
+			this.fieldSidewaysGrip.SetValue(this.axleRear,  rear);
+		}
+
+		private GameObject SetupPlayer(GameObject car)
+		{
+			// Clone PlayerFunctions from a real game car (BACHGLOTZ or KYLAJANI) to get
+			// the full FSM-based driver system: proper camera, auto-crouch, DriverHeadPivot, etc.
+			GameObject pfSource = null;
+			string[] candidates = { "BACHGLOTZ(1905kg)", "KYLAJANI", "KEKMET(350-400psi)", "SORBET(190-200psi)" };
+			foreach (string name in candidates)
+			{
+				GameObject candidate = null;
+				foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
+				{
+					if (go.name == name) { candidate = go; break; }
+				}
+				if (candidate != null)
+				{
+					// PlayerFunctions is at LOD/PlayerFunctions
+					Transform lod = candidate.transform.Find("LOD");
+					if (lod != null)
+					{
+						Transform pft = lod.Find("PlayerFunctions");
+						if (pft != null) { pfSource = pft.gameObject; break; }
+					}
+				}
+			}
+
+			if (pfSource == null)
+			{
+				// Fallback: search all objects
+				foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
+				{
+					if (go.name == "PlayerFunctions" && go.transform.parent != null && go.transform.parent.name == "LOD")
+					{
+						// Make sure it's not our own clone
+						if (go.transform.parent.parent == null || go.transform.parent.parent != car.transform)
+						{
+							pfSource = go;
+							break;
+						}
+					}
+				}
+			}
+
+			if (pfSource == null)
+			{
+				ModConsole.Error("[DUSTMAN] Could not find PlayerFunctions source — seating will not work!");
+				return null;
+			}
+
+			GameObject pf = UnityEngine.Object.Instantiate(pfSource);
+			pf.name = "PlayerFunctions";
+			pf.SetActive(true);
+			pf.transform.SetParent(car.transform);
+			// Position at the driver's seat — tweak localPosition to match your seat location
+			pf.transform.localPosition = new Vector3(-0.3f, -0.2f, 0.6f);
+			pf.transform.localEulerAngles = Vector3.zero;
+
+			// Patch DriveTrigger FSM to reference this car
+			Transform driveTrigger = pf.transform.Find("PlayerTrigger/DriveTrigger");
+			if (driveTrigger != null)
+			{
+				driveTrigger.localPosition = new Vector3(0f, -0.2f, 0f);
+				driveTrigger.localScale = new Vector3(4f, 4f, 4f);
+				PlayMakerFSM[] fsms = driveTrigger.GetComponents<PlayMakerFSM>();
+				if (fsms.Length > 0) this.ConfigureDriveTriggerFSM(fsms[0], car);
+			}
+
+			// Connect DriverHeadPivot's joint to this car's rigidbody
+			Transform headPivot = pf.transform.Find("DriverHeadPivot");
+			if (headPivot != null)
+			{
+				ConfigurableJoint joint = headPivot.GetComponent<ConfigurableJoint>();
+				if (joint != null) joint.connectedBody = car.GetComponent<Rigidbody>();
+			}
+
+			// Adjust player colliders to seat position
+			Transform colliders = pf.transform.Find("PlayerColliders");
+			if (colliders != null)
+			{
+				colliders.localPosition = new Vector3(0.3f, -0.15f, 0f);
+				colliders.localEulerAngles = Vector3.zero;
+			}
+
+			// SetupDeadBody so the camera/head pivot works correctly
+			this.SetupDeadBody(car, pf);
+
+			// Return the pivot that the PLAYER GO will be parented to when seated
+			GameObject check = pf.transform.Find("DriverHeadPivot/CameraPivot/Pivot")?.gameObject;
+			return check;
+		}
+
+		private void SetupDeadBody(GameObject car, GameObject pf)
+		{
+			GameObject dbSource = null;
+			foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
+			{
+				if (go.name == "DeadBody" && go.transform.parent != null && go.transform.parent == car.transform)
+					continue;
+				if (go.name == "DeadBody") { dbSource = go; break; }
+			}
+			if (dbSource == null) return;
+
+			GameObject db = UnityEngine.Object.Instantiate(dbSource);
+			db.transform.SetParent(car.transform);
+			db.transform.localPosition = Vector3.zero;
+			db.name = "DeadBody";
+
+			FixedJoint fj = db.GetComponent<FixedJoint>();
+			if (fj != null) fj.connectedBody = car.GetComponent<Rigidbody>();
+
+			Transform headPivot = pf.transform.Find("DriverHeadPivot");
+			if (headPivot == null) return;
+			PlayMakerFSM fsm = headPivot.GetComponent<PlayMakerFSM>();
+			if (fsm == null) return;
+
+			FsmGameObject dbVar = fsm.FsmVariables.FindFsmGameObject("DeadBody");
+			if (dbVar != null) dbVar.Value = db;
+
+			Transform camPivot = db.transform.Find("CameraPivot");
+			if (camPivot != null)
+			{
+				FsmGameObject cpVar = fsm.FsmVariables.FindFsmGameObject("CameraPivot");
+				if (cpVar != null) cpVar.Value = camPivot.gameObject;
+			}
+		}
+
+		private void ConfigureDriveTriggerFSM(PlayMakerFSM fsm, GameObject car)
+		{
+			FsmBool guiDrive = FsmVariables.GlobalVariables.FindFsmBool("GUIdrive");
+			foreach (FsmState state in fsm.FsmStates)
+			{
+				switch (state.Name)
+				{
+					case "Check speed":
+						if (state.Actions.Length > 0 && state.Actions[0] is GetVelocity gv)
+							gv.gameObject.GameObject = car;
+						break;
+					case "Press return":
+						if (state.Actions.Length > 1 && state.Actions[1] is SetStringValue ss1)
+							ss1.stringValue = "ENTER DRIVING MODE";
+						if (state.Actions.Length > 2 && state.Actions[2] is SetBoolValue sb1)
+							sb1.boolVariable = guiDrive;
+						break;
+					case "Player in car":
+						if (state.Actions.Length > 1 && state.Actions[1] is SetBoolValue sb2)
+							sb2.boolVariable = guiDrive;
+						if (state.Actions.Length > 3 && state.Actions[3] is SetStringValue ss2)
+							ss2.stringValue = "DUSTMAN";
+						break;
+					case "Wait for player":
+						if (state.Actions.Length > 1 && state.Actions[1] is SetBoolValue sb3)
+							sb3.boolVariable = guiDrive;
+						break;
+				}
+			}
+		}
 
 		public void SteeringEnabler(bool enable)
 		{
@@ -371,27 +624,14 @@ namespace DUSTMAN
 			if (!this.in_game)
 				return;
 
-			if (!this.loggedPlayMakerCheck)
-			{
-				this.loggedPlayMakerCheck = true;
-				try
-				{
-					var guiUse = PlayMakerGlobals.Instance.Variables.FindFsmBool("GUIuse");
-					var guiDrive = PlayMakerGlobals.Instance.Variables.FindFsmBool("GUIdrive");
-					var guiInteraction = PlayMakerGlobals.Instance.Variables.FindFsmString("GUIinteraction");
-					var playerSeated = PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated");
-					if (guiUse == null) ModConsole.Error("[DUSTMAN] PlayMaker global 'GUIuse' not found");
-					if (guiDrive == null) ModConsole.Error("[DUSTMAN] PlayMaker global 'GUIdrive' not found");
-					if (guiInteraction == null) ModConsole.Error("[DUSTMAN] PlayMaker global 'GUIinteraction' not found");
-					if (playerSeated == null) ModConsole.Error("[DUSTMAN] PlayMaker global 'PlayerSeated' not found");
-					if (guiUse != null && guiDrive != null && guiInteraction != null && playerSeated != null)
-						ModConsole.Log("[DUSTMAN] PlayMaker globals OK");
-				}
-				catch (Exception e)
-				{
-					ModConsole.Error("[DUSTMAN] PlayMaker globals check failed: " + e.Message);
-				}
-			}
+			// Detect player in car via PlayerFunctions pivot (FSM parents PLAYER here when seated)
+			bool wasInCar = this.playerInCar;
+			this.playerInCar = this.playerCheck != null && this.playerCheck.transform.Find("PLAYER") != null;
+			if (this.playerInCar != wasInCar)
+				this.SteeringEnabler(this.playerInCar);
+
+			// Apply traction slider values to axle grip factors
+			this.ApplyTractionSettings();
 
 			if (this.bought)
 			{
@@ -724,13 +964,6 @@ namespace DUSTMAN
 			{
 				this.Exhaust.SetActive(false);
 			}
-			if (Input.GetKey(KeyCode.Return))
-			{
-				this.acc.steerInput = 0f;
-				this.acc.throttleInput = 0f;
-				this.acc.handbrakeInput = 0f;
-				this.acc.clutchInput = 0f;
-			}
 			this.actualangle = this.drivetrain.rpm * -0.032f + 12f;
 			this.NEEDLE.transform.localRotation = Quaternion.Euler(10f, 0f, this.actualangle);
 			this.anglespeedo = this.drivetrain.differentialSpeed * this.SPEEDFACTOR * 0.6213712f;
@@ -857,18 +1090,6 @@ namespace DUSTMAN
 			this.WHEELRL.transform.localRotation = Quaternion.Euler(0f, 0f, this.FINALPOSITIONRL);
 			this.WHEELRR.transform.localRotation = Quaternion.Euler(0f, 0f, -this.FINALPOSITIONRR);
 			this.LODACTIVATOR.SetActive(true);
-			this.DISTANCE = Vector3.Distance(this.CAR.transform.position, this.PLAYER.transform.position);
-			if (this.DISTANCE < 0.8f)
-			{
-				PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated").Value = true;
-			}
-			if (this.DISTANCE > 0.8f)
-			{
-				if (this.DISTANCE < 1.2f)
-				{
-					PlayMakerGlobals.Instance.Variables.FindFsmBool("PlayerSeated").Value = false;
-				}
-			}
         }
     }
 }
