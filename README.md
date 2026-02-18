@@ -11,7 +11,7 @@ Adds a 1970 Plymouth to My Winter Car. Buy it at the repair shop, drive it aroun
 - Radio
   
 ## Bugs
-Camera issue when driving. - note i will NOT fix this. 
+Camera issue when driving.   - semi fixed, no more fixes for this mod.
 
 ## Installation
 
